@@ -1,0 +1,11 @@
+{
+    "cSpell.words": [
+        "clippy",
+        "dedupe",
+        "indexmap",
+        "linkify",
+        "rustfmt",
+        "rustup",
+        "serde"
+    ]
+}

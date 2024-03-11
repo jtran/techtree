@@ -1,0 +1,39 @@
+# cSpell: ignore Swatinem
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: ["**"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install
+        run: |
+          rustup component add clippy rustfmt
+          cargo install cargo-auditable
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+      - name: Lint
+        run: cargo clippy --all-targets -- -D warnings
+      - name: Check Formatting
+        run: cargo fmt --check
+      - name: Build All
+        run: cargo auditable build --all-targets
+      - name: Run tests
+        run: cargo test --verbose

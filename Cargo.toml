@@ -1,0 +1,47 @@
+[package]
+name = "techtree"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+rust-version = "1.74"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clap = { version = "4", features = ["cargo", "derive"] }
+indexmap = "2"
+linkify = "0.10"
+once_cell = "1"
+# We don't need unicode matching.
+regex = { version = "1", default-features = false, features = ["std", "perf"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+as_conversions = "warn"
+borrow_as_ptr = "warn"
+clone_on_ref_ptr = "warn"
+cloned_instead_of_copied = "warn"
+dbg_macro = "warn"
+debug_assert_with_mut_call = "warn"
+deref_by_slicing = "warn"
+disallowed_script_idents = "warn"
+enum_glob_use = "warn"
+exit = "warn"
+float_cmp = "warn"
+float_cmp_const = "warn"
+imprecise_flops = "warn"
+inefficient_to_string = "warn"
+inline_always = "warn"
+let_underscore_must_use = "warn"
+match_wildcard_for_single_variants = "warn"
+mut_mut = "warn"
+rc_buffer = "warn"
+ref_binding_to_reference = "warn"
+ref_option_ref = "warn"
+str_to_string = "warn"
+suboptimal_flops = "warn"
+upper_case_acronyms = "warn"

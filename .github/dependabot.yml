@@ -1,0 +1,19 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: monthly
+    groups:
+      clap-dependencies:
+        patterns:
+          - "clap*"
+      regex-dependencies:
+        patterns:
+          - "regex*"
+      serde-dependencies:
+        patterns:
+          - "serde*"
