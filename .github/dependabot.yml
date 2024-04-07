@@ -17,3 +17,7 @@ updates:
       serde-dependencies:
         patterns:
           - "serde*"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: monthly
