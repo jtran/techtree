@@ -11,17 +11,18 @@ pub(crate) struct Node {
     pub text: String,
     pub url: String,
     pub state: GithubIssueState,
+    #[allow(unused)]
     pub is_in_project: bool,
     #[allow(unused)]
     pub labels: Vec<String>,
+    pub project_titles: IndexSet<String>,
     pub depends_on_urls: IndexSet<String>,
     pub blocks_count: u32,
     pub updated_at: OffsetDateTime,
 }
 
 impl Node {
-    #[allow(unused)]
-    pub(crate) fn is_open(&self) -> bool {
+    fn is_open(&self) -> bool {
         match self.state {
             GithubIssueState::Open => true,
             GithubIssueState::Closed => false,
@@ -29,25 +30,53 @@ impl Node {
     }
 
     /// Returns true if this node should be included in the flowchart.
-    pub(crate) fn passes_filter(&self, after: &OffsetDateTime) -> bool {
-        (self.is_open() || self.updated_at >= *after)
+    fn passes_filter(&self, filter: &Filter) -> bool {
+        filter.matches_project(&self.project_titles)
+            && (self.is_open() || self.updated_at >= filter.after)
             && (!self.depends_on_urls.is_empty() || self.blocks_count != 0)
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
+pub(crate) struct Filter {
+    include_project_only: Option<String>,
+    after: OffsetDateTime,
+}
+
+impl Filter {
+    fn matches_project(&self, project_titles: &IndexSet<String>) -> bool {
+        self.include_project_only
+            .as_ref()
+            .map(|project| project_titles.contains(project))
+            .unwrap_or(true)
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct Flowchart {
     title: String,
     pub nodes: IndexMap<NodeId, Node>,
     show_all: bool,
+    filter: Filter,
 }
 
 impl Flowchart {
-    pub fn new(title: String, show_all: bool) -> Self {
+    pub fn new(
+        title: String,
+        show_all: bool,
+        include_project_only: Option<String>,
+    ) -> Self {
+        let filter = Filter {
+            // Only show recently closed nodes.
+            after: OffsetDateTime::now_utc() - time::Duration::days(30),
+            include_project_only,
+        };
+
         Self {
             title,
+            nodes: IndexMap::default(),
             show_all,
-            ..Default::default()
+            filter,
         }
     }
 }
@@ -66,12 +95,9 @@ impl std::fmt::Display for Flowchart {
         // Green border.
         writeln!(f, "  classDef state-open stroke:#317236,stroke-width:8px")?;
 
-        // Only show recently closed nodes.
-        let after = OffsetDateTime::now_utc() - time::Duration::days(30);
-
         for node in self.nodes.values() {
             // Does it pass the filter?
-            if !self.show_all && !node.passes_filter(&after) {
+            if !self.show_all && !node.passes_filter(&self.filter) {
                 continue;
             }
 
@@ -101,7 +127,9 @@ impl std::fmt::Display for Flowchart {
                     if let Some(prerequisite) =
                         self.nodes.get(depends_on_url.as_str())
                     {
-                        if self.show_all || prerequisite.passes_filter(&after) {
+                        if self.show_all
+                            || prerequisite.passes_filter(&self.filter)
+                        {
                             writeln!(
                                 f,
                                 "  {} --> {}",

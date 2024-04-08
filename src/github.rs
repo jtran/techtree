@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 type GithubId = String;
 type GithubNumber = NonZeroU32;
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct GithubProjectItemListResult {
     pub items: Vec<GithubProjectItem>,

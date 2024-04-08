@@ -41,9 +41,12 @@ struct MapArgs {
     )]
     pub issues: Option<Vec<PathBuf>>,
     #[arg(
+        long,
         help = "JSON Project Items List stored in a file.  Use - for STDIN."
     )]
-    pub project_file: String,
+    pub project_file: Option<String>,
+    #[arg(long, help = "Filter to only include given project title")]
+    pub include_project: Option<String>,
 }
 
 fn main() -> ExitCode {
@@ -70,18 +73,25 @@ fn try_main() -> AppResult<ExitCode> {
 }
 
 fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
-    let items_json = if args.project_file == "-" {
+    let include_project_only = args.include_project;
+    let project_path = args.project_file.unwrap_or_default();
+    let items_json = if project_path == "-" {
         // Read from STDIN.
         let stdin = std::io::stdin().lock();
-        std::io::read_to_string(stdin)?
-    } else {
+        Some(std::io::read_to_string(stdin)?)
+    } else if !project_path.is_empty() {
         // Read from a file.
-        std::fs::read_to_string(args.project_file)?
+        Some(std::fs::read_to_string(project_path)?)
+    } else {
+        None
     };
     // Note: It's faster to read the entire file and then parse it.
     // https://github.com/serde-rs/json/issues/160
-    let items: GithubProjectItemListResult =
-        serde_json::from_str(items_json.as_str())?;
+    let items: GithubProjectItemListResult = if let Some(json) = items_json {
+        serde_json::from_str(json.as_str())?
+    } else {
+        GithubProjectItemListResult::default()
+    };
 
     let issues: Vec<GithubIssue> = args
         .issues
@@ -113,8 +123,11 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
         .flatten()
         .collect();
 
-    let mut flowchart =
-        Flowchart::new(args.title.unwrap_or_default(), args.all);
+    let mut flowchart = Flowchart::new(
+        args.title.unwrap_or_default(),
+        args.all,
+        include_project_only,
+    );
 
     let mut blocks: IndexMap<NodeId, u32> = IndexMap::default();
 
@@ -145,6 +158,12 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
             eprintln!("Warning: Unexpected issue URL; couldn't parse repository: {:?}", issue.url);
         }
 
+        let project_titles = issue
+            .project_items
+            .iter()
+            .map(|item| item.title.clone())
+            .collect();
+
         let node = Node {
             id: id.to_string(),
             text: issue.title,
@@ -156,6 +175,7 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
                 .iter()
                 .map(|label| label.name.clone())
                 .collect(),
+            project_titles,
             depends_on_urls,
             blocks_count: 0,
             updated_at: issue.updated_at,
