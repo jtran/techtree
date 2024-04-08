@@ -158,6 +158,7 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
                 .collect(),
             depends_on_urls,
             blocks_count: 0,
+            updated_at: issue.updated_at,
         };
         flowchart.nodes.insert(node.url.clone(), node);
 

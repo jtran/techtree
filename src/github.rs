@@ -1,5 +1,7 @@
 use std::num::NonZeroU32;
 
+use time::OffsetDateTime;
+
 type GithubId = String;
 type GithubNumber = NonZeroU32;
 
@@ -75,8 +77,8 @@ pub(crate) struct GithubIssue {
     pub project_items: Vec<GithubIssueProjectItem>,
     pub state: GithubIssueState,
     pub title: String,
-    // TODO: Add updated_at.
-    // pub updated_at: String, // Timestamp
+    #[serde(deserialize_with = "deserialize_rfc3339")]
+    pub updated_at: OffsetDateTime,
     pub url: String,
 }
 
@@ -189,4 +191,19 @@ impl<'de> serde::Deserialize<'de> for GithubIssueState {
             ))),
         }
     }
+}
+
+fn deserialize_rfc3339<'de, D>(
+    deserializer: D,
+) -> Result<OffsetDateTime, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = serde::Deserialize::deserialize(deserializer)?;
+    let format = time::format_description::well_known::Rfc3339;
+    OffsetDateTime::parse(&s, &format).map_err(|err| {
+        serde::de::Error::custom(format!(
+            "Failed to parse RFC 3339 date time: {err}"
+        ))
+    })
 }

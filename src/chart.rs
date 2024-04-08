@@ -1,10 +1,11 @@
 use indexmap::{IndexMap, IndexSet};
+use time::OffsetDateTime;
 
 use crate::github::GithubIssueState;
 
 pub(crate) type NodeId = String;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Node {
     pub id: NodeId,
     pub text: String,
@@ -15,6 +16,7 @@ pub(crate) struct Node {
     pub labels: Vec<String>,
     pub depends_on_urls: IndexSet<String>,
     pub blocks_count: u32,
+    pub updated_at: OffsetDateTime,
 }
 
 impl Node {
@@ -27,8 +29,8 @@ impl Node {
     }
 
     /// Returns true if this node should be included in the flowchart.
-    pub(crate) fn passes_filter(&self) -> bool {
-        self.is_in_project
+    pub(crate) fn passes_filter(&self, after: &OffsetDateTime) -> bool {
+        (self.is_open() || self.updated_at >= *after)
             && (!self.depends_on_urls.is_empty() || self.blocks_count != 0)
     }
 }
@@ -63,9 +65,13 @@ impl std::fmt::Display for Flowchart {
         )?;
         // Green border.
         writeln!(f, "  classDef state-open stroke:#317236,stroke-width:8px")?;
+
+        // Only show recently closed nodes.
+        let after = OffsetDateTime::now_utc() - time::Duration::days(30);
+
         for node in self.nodes.values() {
             // Does it pass the filter?
-            if !self.show_all && !node.passes_filter() {
+            if !self.show_all && !node.passes_filter(&after) {
                 continue;
             }
 
@@ -95,7 +101,7 @@ impl std::fmt::Display for Flowchart {
                     if let Some(prerequisite) =
                         self.nodes.get(depends_on_url.as_str())
                     {
-                        if self.show_all || prerequisite.passes_filter() {
+                        if self.show_all || prerequisite.passes_filter(&after) {
                             writeln!(
                                 f,
                                 "  {} --> {}",
