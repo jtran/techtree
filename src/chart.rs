@@ -30,7 +30,8 @@ impl Node {
     /// Returns true if this node should be included in the flowchart.
     fn passes_filter(&self, filter: &Filter) -> bool {
         filter.matches_project(&self.project_titles)
-            && (self.is_open() || self.updated_at >= filter.after)
+            && (self.is_open()
+                || filter.matches_updated_after(&self.updated_at))
             && (!self.depends_on_urls.is_empty() || self.blocks_count != 0)
     }
 }
@@ -38,7 +39,7 @@ impl Node {
 #[derive(Debug)]
 pub(crate) struct Filter {
     include_project_only: Option<String>,
-    after: OffsetDateTime,
+    updated_after: Option<OffsetDateTime>,
 }
 
 impl Filter {
@@ -47,6 +48,12 @@ impl Filter {
             .as_ref()
             .map(|project| project_titles.contains(project))
             .unwrap_or(true)
+    }
+
+    fn matches_updated_after(&self, updated_at: &OffsetDateTime) -> bool {
+        self.updated_after
+            .map(|updated_after| *updated_at >= updated_after)
+            .unwrap_or(false)
     }
 }
 
@@ -63,10 +70,10 @@ impl Flowchart {
         title: String,
         show_all: bool,
         include_project_only: Option<String>,
+        updated_after: Option<OffsetDateTime>,
     ) -> Self {
         let filter = Filter {
-            // Only show recently closed nodes.
-            after: OffsetDateTime::now_utc() - time::Duration::days(30),
+            updated_after,
             include_project_only,
         };
 

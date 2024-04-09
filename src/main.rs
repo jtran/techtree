@@ -3,6 +3,7 @@ use std::process::ExitCode;
 
 use clap::{Args, Parser};
 use indexmap::{IndexMap, IndexSet};
+use time::OffsetDateTime;
 
 use crate::chart::{Flowchart, Node, NodeId};
 use crate::github::GithubIssue;
@@ -13,6 +14,8 @@ mod parse;
 mod util;
 
 type AppResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+const DEFAULT_PRIOR_DAYS: u16 = 7;
 
 #[derive(Parser)]
 #[command(version, about = "GitHub Projects dependency analysis")]
@@ -42,6 +45,11 @@ struct MapArgs {
     pub issues: Option<Vec<PathBuf>>,
     #[arg(long, help = "Filter to only include given project title")]
     pub include_project: Option<String>,
+    #[arg(
+        long,
+        help = "Additionally include closed issues that were updated in the last N days.  Default is 7 days."
+    )]
+    pub prior_days: Option<u16>,
 }
 
 fn main() -> ExitCode {
@@ -100,10 +108,17 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
         .flatten()
         .collect();
 
+    // Only show closed nodes that have been recently updated.
+    let updated_after = OffsetDateTime::now_utc()
+        - time::Duration::days(i64::from(
+            args.prior_days.unwrap_or(DEFAULT_PRIOR_DAYS),
+        ));
+
     let mut flowchart = Flowchart::new(
         args.title.unwrap_or_default(),
         args.all,
         include_project_only,
+        Some(updated_after),
     );
 
     let mut blocks: IndexMap<NodeId, u32> = IndexMap::default();
