@@ -1,34 +1,87 @@
 use indexmap::{IndexMap, IndexSet};
+use time::OffsetDateTime;
+
+use crate::github::GithubIssueState;
 
 pub(crate) type NodeId = String;
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct Node {
     pub id: NodeId,
     pub text: String,
     pub url: String,
-    pub is_done: bool,
-    #[allow(unused)]
-    pub status: String,
+    pub state: GithubIssueState,
     #[allow(unused)]
     pub labels: Vec<String>,
+    pub project_titles: IndexSet<String>,
     pub depends_on_urls: IndexSet<String>,
     pub blocks_count: u32,
+    pub updated_at: OffsetDateTime,
 }
 
-#[derive(Debug, Default)]
+impl Node {
+    fn is_open(&self) -> bool {
+        match self.state {
+            GithubIssueState::Open => true,
+            GithubIssueState::Closed => false,
+        }
+    }
+
+    /// Returns true if this node should be included in the flowchart.
+    fn passes_filter(&self, filter: &Filter) -> bool {
+        filter.matches_project(&self.project_titles)
+            && (self.is_open()
+                || filter.matches_updated_after(&self.updated_at))
+            && (!self.depends_on_urls.is_empty() || self.blocks_count != 0)
+    }
+}
+
+#[derive(Debug)]
+pub(crate) struct Filter {
+    include_project_only: Option<String>,
+    updated_after: Option<OffsetDateTime>,
+}
+
+impl Filter {
+    fn matches_project(&self, project_titles: &IndexSet<String>) -> bool {
+        self.include_project_only
+            .as_ref()
+            .map(|project| project_titles.contains(project))
+            .unwrap_or(true)
+    }
+
+    fn matches_updated_after(&self, updated_at: &OffsetDateTime) -> bool {
+        self.updated_after
+            .map(|updated_after| *updated_at >= updated_after)
+            .unwrap_or(false)
+    }
+}
+
+#[derive(Debug)]
 pub(crate) struct Flowchart {
     title: String,
     pub nodes: IndexMap<NodeId, Node>,
     show_all: bool,
+    filter: Filter,
 }
 
 impl Flowchart {
-    pub fn new(title: String, show_all: bool) -> Self {
+    pub fn new(
+        title: String,
+        show_all: bool,
+        include_project_only: Option<String>,
+        updated_after: Option<OffsetDateTime>,
+    ) -> Self {
+        let filter = Filter {
+            updated_after,
+            include_project_only,
+        };
+
         Self {
             title,
+            nodes: IndexMap::default(),
             show_all,
-            ..Default::default()
+            filter,
         }
     }
 }
@@ -42,19 +95,14 @@ impl std::fmt::Display for Flowchart {
         // Purple border. Gray text.
         writeln!(
             f,
-            "  classDef status-done stroke:#7048D4,stroke-width:8px,color:#636871"
+            "  classDef state-closed stroke:#7048D4,stroke-width:8px,color:#636871"
         )?;
         // Green border.
-        writeln!(
-            f,
-            "  classDef status-not-done stroke:#317236,stroke-width:8px"
-        )?;
+        writeln!(f, "  classDef state-open stroke:#317236,stroke-width:8px")?;
+
         for node in self.nodes.values() {
             // Does it pass the filter?
-            if !self.show_all
-                && node.depends_on_urls.is_empty()
-                && node.blocks_count == 0
-            {
+            if !self.show_all && !node.passes_filter(&self.filter) {
                 continue;
             }
 
@@ -63,10 +111,13 @@ impl std::fmt::Display for Flowchart {
                 write!(f, "({})", mermaid_quote(&node.text))?;
             }
             writeln!(f)?;
-            if node.is_done {
-                writeln!(f, "  class {} status-done", node.id)?;
-            } else {
-                writeln!(f, "  class {} status-not-done", node.id)?;
+            match node.state {
+                GithubIssueState::Open => {
+                    writeln!(f, "  class {} state-open", node.id)?;
+                }
+                GithubIssueState::Closed => {
+                    writeln!(f, "  class {} state-closed", node.id)?;
+                }
             }
             if !node.url.is_empty() {
                 writeln!(
@@ -81,7 +132,15 @@ impl std::fmt::Display for Flowchart {
                     if let Some(prerequisite) =
                         self.nodes.get(depends_on_url.as_str())
                     {
-                        writeln!(f, "  {} --> {}", prerequisite.id, node.id)?;
+                        if self.show_all
+                            || prerequisite.passes_filter(&self.filter)
+                        {
+                            writeln!(
+                                f,
+                                "  {} --> {}",
+                                prerequisite.id, node.id
+                            )?;
+                        }
                     }
                 }
             }
