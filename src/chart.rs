@@ -12,8 +12,6 @@ pub(crate) struct Node {
     pub url: String,
     pub state: GithubIssueState,
     #[allow(unused)]
-    pub is_in_project: bool,
-    #[allow(unused)]
     pub labels: Vec<String>,
     pub project_titles: IndexSet<String>,
     pub depends_on_urls: IndexSet<String>,

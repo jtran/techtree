@@ -5,56 +5,6 @@ use time::OffsetDateTime;
 type GithubId = String;
 type GithubNumber = NonZeroU32;
 
-#[derive(Debug, Default, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct GithubProjectItemListResult {
-    pub items: Vec<GithubProjectItem>,
-    #[allow(unused)]
-    pub total_count: u32,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct GithubProjectItem {
-    pub content: GithubProjectItemContent,
-    #[allow(unused)]
-    pub id: GithubId,
-    #[allow(unused)]
-    #[serde(default)]
-    pub labels: Vec<String>,
-    #[allow(unused)]
-    #[serde(default)]
-    pub repository: String,
-    #[allow(unused)]
-    #[serde(default)]
-    pub status: String,
-    #[allow(unused)]
-    #[serde(default)]
-    pub title: String,
-}
-
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct GithubProjectItemContent {
-    #[allow(unused)]
-    #[serde(rename = "type")]
-    pub item_type: String,
-    #[allow(unused)]
-    #[serde(default)]
-    pub body: String,
-    #[allow(unused)]
-    pub title: String,
-    /// The issue or PR number that you use to reference it, e.g. #123.
-    #[allow(unused)]
-    #[serde(default)]
-    pub number: Option<GithubNumber>,
-    #[allow(unused)]
-    #[serde(default)]
-    pub repository: String,
-    #[serde(default)]
-    pub url: String,
-}
-
 #[allow(unused)]
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

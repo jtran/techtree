@@ -5,7 +5,7 @@ use clap::{Args, Parser};
 use indexmap::{IndexMap, IndexSet};
 
 use crate::chart::{Flowchart, Node, NodeId};
-use crate::github::{GithubIssue, GithubProjectItemListResult};
+use crate::github::GithubIssue;
 
 mod chart;
 mod github;
@@ -40,11 +40,6 @@ struct MapArgs {
         help = "JSON Issues List stored in a file.  You can use this multiple times."
     )]
     pub issues: Option<Vec<PathBuf>>,
-    #[arg(
-        long,
-        help = "JSON Project Items List stored in a file.  Use - for STDIN."
-    )]
-    pub project_file: Option<String>,
     #[arg(long, help = "Filter to only include given project title")]
     pub include_project: Option<String>,
 }
@@ -74,24 +69,6 @@ fn try_main() -> AppResult<ExitCode> {
 
 fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
     let include_project_only = args.include_project;
-    let project_path = args.project_file.unwrap_or_default();
-    let items_json = if project_path == "-" {
-        // Read from STDIN.
-        let stdin = std::io::stdin().lock();
-        Some(std::io::read_to_string(stdin)?)
-    } else if !project_path.is_empty() {
-        // Read from a file.
-        Some(std::fs::read_to_string(project_path)?)
-    } else {
-        None
-    };
-    // Note: It's faster to read the entire file and then parse it.
-    // https://github.com/serde-rs/json/issues/160
-    let items: GithubProjectItemListResult = if let Some(json) = items_json {
-        serde_json::from_str(json.as_str())?
-    } else {
-        GithubProjectItemListResult::default()
-    };
 
     let issues: Vec<GithubIssue> = args
         .issues
@@ -169,7 +146,6 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
             text: issue.title,
             url: issue.url,
             state: issue.state,
-            is_in_project: false,
             labels: issue
                 .labels
                 .iter()
@@ -183,16 +159,6 @@ fn print_dependencies_map(args: MapArgs) -> AppResult<()> {
         flowchart.nodes.insert(node.url.clone(), node);
 
         id = id.checked_add(1).expect("Overflowed number of items");
-    }
-
-    for item in items.items {
-        let url = item.content.url;
-        let Some(node) = flowchart.nodes.get_mut(&url) else {
-            // This item is not in the issues.
-            continue;
-        };
-
-        node.is_in_project = true;
     }
 
     // Update nodes to have the count of items they block.
