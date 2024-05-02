@@ -21,13 +21,6 @@ impl UiState {
     pub fn deselect_node(&mut self, _node_id: &NodeId) {
         self.selected_node_id = None;
     }
-    // pub fn toggle_selected_node(&mut self, node_id: NodeId) {
-    //     if self.selected_node_id.as_ref() == Some(&node_id) {
-    //         self.selected_node_id = None;
-    //     } else {
-    //         self.selected_node_id = Some(node_id);
-    //     }
-    // }
 }
 
 #[derive(Debug, Default, Event)]

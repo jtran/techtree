@@ -1,12 +1,6 @@
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
-// pub(crate) fn mouse_button_system(mouse_button_input: Res<ButtonInput<MouseButton>>) {
-//     if mouse_button_input.just_pressed(MouseButton::Left) {
-//         println!("Left mouse button pressed");
-//     }
-// }
-
 /// Keyboard controls the camera.
 pub(crate) fn keyboard_system(
     mut camera_query: Query<&mut Transform, (With<Camera>, With<super::SceneCamera>)>,
