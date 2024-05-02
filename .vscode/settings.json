@@ -1,9 +1,14 @@
 {
     "cSpell.words": [
+        "bbox",
         "clippy",
         "dedupe",
+        "egui",
         "indexmap",
         "linkify",
+        "meshtext",
+        "msaa",
+        "Pickable",
         "rustfmt",
         "rustup",
         "serde"

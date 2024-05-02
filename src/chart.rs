@@ -5,7 +5,7 @@ use crate::github::GithubIssueState;
 
 pub(crate) type NodeId = String;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Node {
     pub id: NodeId,
     pub text: String,
@@ -57,10 +57,11 @@ impl Filter {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, bevy::prelude::Resource)]
 pub(crate) struct Flowchart {
     title: String,
-    pub nodes: IndexMap<NodeId, Node>,
+    pub nodes_by_id: IndexMap<NodeId, Node>,
+    pub nodes_by_url: IndexMap<String, NodeId>,
     show_all: bool,
     filter: Filter,
 }
@@ -79,10 +80,49 @@ impl Flowchart {
 
         Self {
             title,
-            nodes: IndexMap::default(),
+            nodes_by_id: IndexMap::default(),
+            nodes_by_url: IndexMap::default(),
             show_all,
             filter,
         }
+    }
+
+    pub fn insert(&mut self, node: Node) {
+        if !node.url.is_empty() {
+            self.nodes_by_url.insert(node.url.clone(), node.id.clone());
+        }
+        self.nodes_by_id.insert(node.id.clone(), node);
+    }
+
+    pub fn prune(&mut self) {
+        // TODO: Also prune nodes_by_url.
+        self.nodes_by_id.retain(|_, node| {
+            self.show_all || node.passes_filter(&self.filter)
+        });
+    }
+
+    pub fn num_nodes(&self) -> usize {
+        self.nodes_by_url.len()
+    }
+
+    pub fn get_node_by_url(&self, url: &str) -> Option<&Node> {
+        self.nodes_by_url
+            .get(url)
+            .and_then(|node_id| self.nodes_by_id.get(node_id))
+    }
+
+    pub fn get_node_by_url_mut(&mut self, url: &str) -> Option<&mut Node> {
+        self.nodes_by_url
+            .get(url)
+            .and_then(|node_id| self.nodes_by_id.get_mut(node_id))
+    }
+
+    pub fn get_node_by_id(&self, node_id: &NodeId) -> Option<&Node> {
+        self.nodes_by_id.get(node_id)
+    }
+
+    pub fn get_node_by_index(&self, index: usize) -> Option<&Node> {
+        self.nodes_by_id.get_index(index).map(|(_, node)| node)
     }
 }
 
@@ -100,7 +140,7 @@ impl std::fmt::Display for Flowchart {
         // Green border.
         writeln!(f, "  classDef state-open stroke:#317236,stroke-width:8px")?;
 
-        for node in self.nodes.values() {
+        for node in self.nodes_by_id.values() {
             // Does it pass the filter?
             if !self.show_all && !node.passes_filter(&self.filter) {
                 continue;
@@ -130,7 +170,7 @@ impl std::fmt::Display for Flowchart {
             if !node.depends_on_urls.is_empty() {
                 for depends_on_url in &node.depends_on_urls {
                     if let Some(prerequisite) =
-                        self.nodes.get(depends_on_url.as_str())
+                        self.get_node_by_url(depends_on_url.as_str())
                     {
                         if self.show_all
                             || prerequisite.passes_filter(&self.filter)
