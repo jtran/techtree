@@ -1,6 +1,7 @@
 use bevy::{prelude::*, render::render_asset::RenderAssetUsages};
 use bevy_mod_picking::prelude::*;
 use meshtext::{Face, MeshGenerator, MeshText, TextSection};
+use smallvec::SmallVec;
 use std::borrow::Cow;
 
 use crate::chart;
@@ -9,8 +10,16 @@ use super::ui::UiState;
 
 #[derive(Default, Component)]
 pub(crate) struct TextBox {
-    pub lower_case_title: String,
     pub node_id: chart::NodeId,
+    searchable_tokens: SmallVec<[String; 10]>,
+}
+
+impl TextBox {
+    pub fn matches(&self, filter: &str) -> bool {
+        filter.split_whitespace().all(|key| {
+            self.searchable_tokens.iter().any(|token| token.contains(key))
+        })
+    }
 }
 
 #[derive(Event)]
@@ -49,6 +58,7 @@ pub(crate) fn spawn(
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
     text: &str,
+    searchable_tokens: SmallVec<[String; 10]>,
     node_id: chart::NodeId,
     size: Vec2,
     translation: Vec3,
@@ -105,8 +115,8 @@ pub(crate) fn spawn(
 
     commands
         .spawn(TextBox {
-            lower_case_title: text.to_lowercase(),
             node_id,
+            searchable_tokens,
         })
         .insert((
             PickableBundle::default(),

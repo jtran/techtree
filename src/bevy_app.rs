@@ -2,6 +2,7 @@
 
 use bevy::prelude::*;
 use bevy_mod_picking::prelude::*;
+use smallvec::SmallVec;
 
 use crate::chart::Flowchart;
 use crate::{
@@ -99,6 +100,14 @@ fn setup(
         let translation = Vec3::new(x_offset, y_offset, 0_f32);
         let size = Vec2::new(width, height);
         let text = node.text.clone();
+        let mut searchable_tokens = text
+            .to_lowercase()
+            .split_whitespace()
+            .map(ToString::to_string)
+            .collect::<SmallVec<_>>();
+        for label in &node.labels {
+            searchable_tokens.push(label.clone());
+        }
         text_box::spawn(
             &mut commands,
             &mut mesh_generator,
@@ -106,6 +115,7 @@ fn setup(
             &mut materials,
             text.as_str(),
             // TODO: Use a Copy type.
+            searchable_tokens,
             node.id.clone(),
             size,
             translation,
