@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use bevy::prelude::*;
 use bevy_egui::egui;
 use bevy_egui::EguiContexts;
@@ -11,6 +13,7 @@ use super::text_box::TextBox;
 pub(crate) struct UiState {
     filter_text: String,
     selected_node_id: Option<NodeId>,
+    input_debounce_timer: Timer,
 }
 
 impl UiState {
@@ -23,21 +26,38 @@ impl UiState {
     }
 }
 
+/// Send this event to request re-laying out everything in the scene.
+#[derive(Debug, Default, Event)]
+pub(crate) struct NeedsLayoutEvent {}
+
 #[derive(Debug, Default, Event)]
 pub(crate) struct FilterChangeEvent {}
 
 pub(crate) fn immediate_system(
     mut contexts: EguiContexts,
     mut state: ResMut<UiState>,
+    mut needs_layout_events: EventWriter<NeedsLayoutEvent>,
     mut filter_events: EventWriter<FilterChangeEvent>,
     flowchart: Res<chart::Flowchart>,
+    time: Res<Time>,
 ) {
+    // Update the timer.
+    state.input_debounce_timer.tick(time.delta());
+    // Debounced input.
+    if state.input_debounce_timer.just_finished() {
+        needs_layout_events.send_default();
+    }
+
     egui::Window::new("View").show(contexts.ctx_mut(), |ui| {
         ui.horizontal(|ui| {
             ui.label("Filter");
             let filter_response =
                 ui.text_edit_singleline(&mut state.filter_text);
             if filter_response.changed() {
+                state
+                    .input_debounce_timer
+                    .set_duration(Duration::from_millis(1000));
+                state.input_debounce_timer.reset();
                 filter_events.send_default();
             }
         });

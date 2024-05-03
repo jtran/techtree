@@ -11,6 +11,7 @@ use crate::{
 };
 
 mod input;
+mod layout;
 mod text_box;
 mod ui;
 
@@ -37,6 +38,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         })
         .add_event::<text_box::TextBoxSelectEvent>()
         .add_event::<text_box::TextBoxDeselectEvent>()
+        .add_event::<ui::NeedsLayoutEvent>()
         .add_event::<ui::FilterChangeEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugins(DefaultPickingPlugins)
@@ -47,6 +49,8 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_systems(Update, ui::filter_events)
         .add_systems(Update, input::keyboard_system)
         .add_systems(Update, input::events_system)
+        .add_systems(Update, layout::relayout_handler)
+        .add_systems(Update, layout::animation_system)
         .add_systems(Update, text_box::text_box_select_handler)
         .add_systems(Update, text_box::text_box_deselect_handler)
         .run();

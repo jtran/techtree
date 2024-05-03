@@ -5,10 +5,12 @@
         "dedupe",
         "egui",
         "indexmap",
+        "lerp",
         "linkify",
         "meshtext",
         "msaa",
         "Pickable",
+        "relayout",
         "rustfmt",
         "rustup",
         "serde"

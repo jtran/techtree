@@ -119,6 +119,8 @@ pub(crate) fn spawn(
     commands
         .spawn(TextBox {
             node_id,
+            // Initial target should be the same as the transform's translation.
+            target_translation: translation,
             searchable_tokens,
         })
         .insert((
