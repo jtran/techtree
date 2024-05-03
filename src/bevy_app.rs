@@ -118,9 +118,10 @@ fn setup(
             &mut meshes,
             &mut materials,
             text.as_str(),
-            // TODO: Use a Copy type.
             searchable_tokens,
+            // TODO: Use a Copy type.
             node.id.clone(),
+            node.state,
             size,
             translation,
         );

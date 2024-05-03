@@ -4,13 +4,14 @@ use meshtext::{Face, MeshGenerator, MeshText, TextSection};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 
-use crate::chart;
+use crate::{chart, github::GithubIssueState};
 
 use super::ui::UiState;
 
 #[derive(Default, Component)]
 pub(crate) struct TextBox {
     pub node_id: chart::NodeId,
+    state: GithubIssueState,
     pub target_translation: Vec3,
     searchable_tokens: SmallVec<[String; 10]>,
 }
@@ -22,6 +23,13 @@ impl TextBox {
                 .iter()
                 .any(|token| token.contains(key))
         })
+    }
+
+    pub fn is_state_open(&self) -> bool {
+        match self.state {
+            GithubIssueState::Open => true,
+            GithubIssueState::Closed => false,
+        }
     }
 }
 
@@ -63,6 +71,7 @@ pub(crate) fn spawn(
     text: &str,
     searchable_tokens: SmallVec<[String; 10]>,
     node_id: chart::NodeId,
+    state: GithubIssueState,
     size: Vec2,
     translation: Vec3,
 ) {
@@ -119,6 +128,7 @@ pub(crate) fn spawn(
     commands
         .spawn(TextBox {
             node_id,
+            state,
             // Initial target should be the same as the transform's translation.
             target_translation: translation,
             searchable_tokens,
