@@ -63,8 +63,7 @@ pub(crate) fn filter_events(
     let lower_case_filter = state.filter_text.to_lowercase();
     for _ in filter_events.read() {
         for (text_box, mut visible) in text_boxes_query.iter_mut() {
-            *visible = if text_box.matches(&lower_case_filter)
-            {
+            *visible = if text_box.matches(&lower_case_filter) {
                 Visibility::Inherited
             } else {
                 Visibility::Hidden

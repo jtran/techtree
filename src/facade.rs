@@ -3,9 +3,9 @@ use std::path::{Path, PathBuf};
 use indexmap::{IndexMap, IndexSet};
 use time::OffsetDateTime;
 
+use crate::chart::{Flowchart, Node, NodeId};
 use crate::github::GithubIssue;
 use crate::{parse, AppResult};
-use crate::chart::{Flowchart, Node, NodeId};
 
 const DEFAULT_PRIOR_DAYS: u16 = 7;
 

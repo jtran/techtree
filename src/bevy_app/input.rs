@@ -3,7 +3,10 @@ use bevy::prelude::*;
 
 /// Keyboard controls the camera.
 pub(crate) fn keyboard_system(
-    mut camera_query: Query<&mut Transform, (With<Camera>, With<super::SceneCamera>)>,
+    mut camera_query: Query<
+        &mut Transform,
+        (With<Camera>, With<super::SceneCamera>),
+    >,
     keyboard_input: Res<ButtonInput<KeyCode>>,
 ) {
     if keyboard_input.pressed(KeyCode::ArrowUp) {
@@ -38,8 +41,12 @@ pub(crate) fn events_system(
         match projection.as_mut() {
             Projection::Perspective(perspective) => {
                 perspective.fov += match event.unit {
-                    bevy::input::mouse::MouseScrollUnit::Line => event.y * 5_f32,
-                    bevy::input::mouse::MouseScrollUnit::Pixel => event.y * 0.01_f32,
+                    bevy::input::mouse::MouseScrollUnit::Line => {
+                        event.y * 5_f32
+                    }
+                    bevy::input::mouse::MouseScrollUnit::Pixel => {
+                        event.y * 0.01_f32
+                    }
                 };
                 // Clamp.
                 perspective.fov = perspective
@@ -49,8 +56,12 @@ pub(crate) fn events_system(
             }
             Projection::Orthographic(orthographic) => {
                 orthographic.scale += match event.unit {
-                    bevy::input::mouse::MouseScrollUnit::Line => event.y * 0.5_f32,
-                    bevy::input::mouse::MouseScrollUnit::Pixel => event.y * 0.01_f32,
+                    bevy::input::mouse::MouseScrollUnit::Line => {
+                        event.y * 0.5_f32
+                    }
+                    bevy::input::mouse::MouseScrollUnit::Pixel => {
+                        event.y * 0.01_f32
+                    }
                 };
                 // Clamp.
                 orthographic.scale = orthographic.scale.max(0.5_f32).min(8_f32);

@@ -11,13 +11,16 @@ use super::ui::UiState;
 #[derive(Default, Component)]
 pub(crate) struct TextBox {
     pub node_id: chart::NodeId,
+    pub target_translation: Vec3,
     searchable_tokens: SmallVec<[String; 10]>,
 }
 
 impl TextBox {
     pub fn matches(&self, filter: &str) -> bool {
         filter.split_whitespace().all(|key| {
-            self.searchable_tokens.iter().any(|token| token.contains(key))
+            self.searchable_tokens
+                .iter()
+                .any(|token| token.contains(key))
         })
     }
 }
