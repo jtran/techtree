@@ -65,7 +65,7 @@ pub(crate) fn immediate_system(
         if let Some(selected_node_id) = state.selected_node_id.as_ref() {
             if let Some(node) = flowchart.get_node_by_id(selected_node_id) {
                 ui.label(node.text.as_str());
-                ui.label(node.url.as_str());
+                ui.hyperlink(node.url.as_str());
             } else {
                 ui.label("Node not found");
             }
