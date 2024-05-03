@@ -23,6 +23,11 @@ pub(crate) fn relayout_handler(
 
     let num_nodes = visible_entities.len();
 
+    if num_nodes == 0 {
+        // Everything is filtered out.  Nothing to do.
+        return;
+    }
+
     let num_rows = (num_nodes as f32 * 4.0).sqrt().ceil() as usize;
     let half_rows = num_rows as f32 / 2_f32;
     let num_cols = num_nodes.div_ceil(num_rows);
