@@ -14,6 +14,8 @@ pub(crate) struct GithubIssue {
     #[serde(default)]
     pub body: String,
     pub closed: bool,
+    #[serde(deserialize_with = "deserialize_optional_rfc3339")]
+    pub closed_at: Option<OffsetDateTime>,
     #[serde(default)]
     pub comments: Option<Vec<GithubIssueComment>>,
     #[allow(unused)]
@@ -155,5 +157,20 @@ where
         serde::de::Error::custom(format!(
             "Failed to parse RFC 3339 date time: {err}"
         ))
+    })
+}
+
+fn deserialize_optional_rfc3339<'de, D>(
+    deserializer: D,
+) -> Result<Option<OffsetDateTime>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    serde::Deserialize::deserialize(deserializer).map(|s: Option<String>| {
+        s.map(|s| {
+            let format = time::format_description::well_known::Rfc3339;
+            OffsetDateTime::parse(&s, &format)
+                .expect("Failed to parse RFC 3339 date time")
+        })
     })
 }
