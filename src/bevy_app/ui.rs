@@ -112,6 +112,7 @@ pub(crate) fn immediate_system(
             if ui.add(z_position).changed() {
                 camera_events.send_default();
             }
+            ui.label("Shift + Scroll Vertically");
         });
         ui.separator();
         if let Some(selected_node_id) = state.selected_node_id.as_ref() {
