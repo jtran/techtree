@@ -35,6 +35,7 @@ pub(crate) fn keyboard_system(
 pub(crate) fn events_system(
     mut projections: Query<&mut Projection>,
     mut wheel: EventReader<MouseWheel>,
+    mut state: ResMut<super::ui::UiState>,
 ) {
     for event in wheel.read() {
         let mut projection = projections.single_mut();
@@ -53,6 +54,8 @@ pub(crate) fn events_system(
                     .fov
                     .max(0.15_f32)
                     .min(std::f32::consts::PI * 5.0 / 6.0);
+                // Copy to UI state.
+                state.camera_scale = perspective.fov;
             }
             Projection::Orthographic(orthographic) => {
                 orthographic.scale += match event.unit {
@@ -64,7 +67,10 @@ pub(crate) fn events_system(
                     }
                 };
                 // Clamp.
-                orthographic.scale = orthographic.scale.max(0.5_f32).min(8_f32);
+                orthographic.scale =
+                    orthographic.scale.max(0.3_f32).min(50_f32);
+                // Copy to UI state.
+                state.camera_scale = orthographic.scale;
             }
         }
     }

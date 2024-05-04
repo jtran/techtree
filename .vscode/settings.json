@@ -2,6 +2,7 @@
     "cSpell.words": [
         "bbox",
         "clippy",
+        "consts",
         "dedupe",
         "egui",
         "indexmap",
@@ -9,10 +10,12 @@
         "linkify",
         "meshtext",
         "msaa",
+        "orthographic",
         "Pickable",
         "relayout",
         "rustfmt",
         "rustup",
-        "serde"
+        "serde",
+        "smallvec"
     ]
 }

@@ -8,11 +8,13 @@ use crate::chart;
 use crate::chart::NodeId;
 
 use super::text_box::TextBox;
+use super::ORTHOGRAPHIC_PROJECTION;
 
 #[derive(Debug, Resource)]
 pub(crate) struct UiState {
     filter_text: String,
     show_closed: bool,
+    pub camera_scale: f32,
     selected_node_id: Option<NodeId>,
     input_debounce_timer: Timer,
 }
@@ -22,6 +24,13 @@ impl Default for UiState {
         Self {
             filter_text: String::new(),
             show_closed: true,
+            camera_scale: if ORTHOGRAPHIC_PROJECTION {
+                // The default scale of an orthographic camera projection.
+                1.0
+            } else {
+                // The default fov of a perspective camera projection.
+                std::f32::consts::FRAC_PI_4
+            },
             selected_node_id: None,
             input_debounce_timer: Timer::default(),
         }
@@ -45,11 +54,15 @@ pub(crate) struct NeedsLayoutEvent {}
 #[derive(Debug, Default, Event)]
 pub(crate) struct FilterChangeEvent {}
 
+#[derive(Debug, Default, Event)]
+pub(crate) struct CameraChangeEvent {}
+
 pub(crate) fn immediate_system(
     mut contexts: EguiContexts,
     mut state: ResMut<UiState>,
     mut needs_layout_events: EventWriter<NeedsLayoutEvent>,
     mut filter_events: EventWriter<FilterChangeEvent>,
+    mut camera_events: EventWriter<CameraChangeEvent>,
     flowchart: Res<chart::Flowchart>,
     time: Res<Time>,
 ) {
@@ -86,6 +99,21 @@ pub(crate) fn immediate_system(
             debounce_filter_input(&mut state, &mut filter_events);
         }
         ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Camera Scale (Zoom)");
+            let mut z_position = egui::DragValue::new(&mut state.camera_scale);
+            if ORTHOGRAPHIC_PROJECTION {
+                z_position = z_position.clamp_range(0.3..=50.0).speed(0.1);
+            } else {
+                z_position = z_position
+                    .clamp_range(0.15..=std::f32::consts::PI * 5.0 / 6.0)
+                    .speed(0.01);
+            }
+            if ui.add(z_position).changed() {
+                camera_events.send_default();
+            }
+        });
+        ui.separator();
         if let Some(selected_node_id) = state.selected_node_id.as_ref() {
             if let Some(node) = flowchart.get_node_by_id(selected_node_id) {
                 ui.label(node.text.as_str());
@@ -114,6 +142,25 @@ pub(crate) fn filter_events(
             } else {
                 Visibility::Hidden
             };
+        }
+    }
+}
+
+pub(crate) fn camera_events(
+    state: Res<UiState>,
+    mut camera_events: EventReader<CameraChangeEvent>,
+    mut projection_query: Query<&mut Projection>,
+) {
+    for _ in camera_events.read() {
+        for mut projection in projection_query.iter_mut() {
+            match projection.as_mut() {
+                Projection::Perspective(perspective) => {
+                    perspective.fov = state.camera_scale;
+                }
+                Projection::Orthographic(orthographic) => {
+                    orthographic.scale = state.camera_scale;
+                }
+            }
         }
     }
 }

@@ -15,6 +15,8 @@ mod layout;
 mod text_box;
 mod ui;
 
+const ORTHOGRAPHIC_PROJECTION: bool = true;
+
 pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
     let mut flowchart = facade::build_dependencies(DepsArgs {
         title: None,
@@ -40,6 +42,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_event::<text_box::TextBoxDeselectEvent>()
         .add_event::<ui::NeedsLayoutEvent>()
         .add_event::<ui::FilterChangeEvent>()
+        .add_event::<ui::CameraChangeEvent>()
         .add_plugins(DefaultPlugins)
         .add_plugins(DefaultPickingPlugins)
         .init_resource::<ui::UiState>()
@@ -47,6 +50,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_systems(Startup, setup)
         .add_systems(Update, ui::immediate_system)
         .add_systems(Update, ui::filter_events)
+        .add_systems(Update, ui::camera_events)
         .add_systems(Update, input::keyboard_system)
         .add_systems(Update, input::events_system)
         .add_systems(Update, layout::relayout_handler)
@@ -141,14 +145,17 @@ fn setup(
         ..Default::default()
     });
     // Camera.
+    let projection = if ORTHOGRAPHIC_PROJECTION {
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: bevy::render::camera::ScalingMode::WindowSize(32_f32),
+            ..Default::default()
+        })
+    } else {
+        Projection::Perspective(PerspectiveProjection::default())
+    };
     commands
         .spawn(Camera3dBundle {
-            projection: Projection::Orthographic(OrthographicProjection {
-                scaling_mode: bevy::render::camera::ScalingMode::WindowSize(
-                    32_f32,
-                ),
-                ..Default::default()
-            }),
+            projection,
             transform: Transform::from_xyz(0_f32, 0_f32, 6_f32)
                 .looking_at(Vec3::new(0_f32, 0_f32, 0f32), Vec3::Y),
             ..Default::default()
