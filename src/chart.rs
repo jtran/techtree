@@ -28,6 +28,8 @@ pub(crate) struct Node {
     pub labels: Vec<String>,
     pub project_titles: IndexSet<String>,
     pub depends_on_urls: IndexSet<String>,
+    #[allow(dead_code)]
+    pub depends_on_ids: IndexSet<NodeId>,
     pub depended_on_by_ids: IndexSet<NodeId>,
     pub updated_at: OffsetDateTime,
 }
@@ -123,6 +125,17 @@ impl FlowchartBuilder {
     }
 
     pub fn build(mut self) -> Flowchart {
+        // Convert URLs to IDs.
+        for node in self.nodes_by_id.values_mut() {
+            for depends_on_url in &node.depends_on_urls {
+                if let Some(depends_on_id) =
+                    self.nodes_by_url.get(depends_on_url)
+                {
+                    node.depended_on_by_ids.insert(*depends_on_id);
+                }
+            }
+        }
+        // Convert dependencies to depended on by.
         for (url, depended_on_ids) in self.depended_on_by_ids {
             if let Some(node_id) = self.nodes_by_url.get(&url) {
                 if let Some(node) = self.nodes_by_id.get_mut(node_id) {

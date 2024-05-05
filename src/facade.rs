@@ -102,6 +102,7 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
                 .collect(),
             project_titles,
             depends_on_urls,
+            depends_on_ids: IndexSet::default(),
             depended_on_by_ids: IndexSet::default(),
             updated_at: issue.updated_at,
         };
