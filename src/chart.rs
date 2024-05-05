@@ -3,7 +3,20 @@ use time::OffsetDateTime;
 
 use crate::github::GithubIssueState;
 
-pub(crate) type NodeId = String;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct NodeId(usize);
+
+impl NodeId {
+    pub fn new(id: usize) -> Self {
+        Self(id)
+    }
+}
+
+impl std::fmt::Display for NodeId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone)]
 pub(crate) struct Node {
@@ -89,9 +102,9 @@ impl Flowchart {
 
     pub fn insert(&mut self, node: Node) {
         if !node.url.is_empty() {
-            self.nodes_by_url.insert(node.url.clone(), node.id.clone());
+            self.nodes_by_url.insert(node.url.clone(), node.id);
         }
-        self.nodes_by_id.insert(node.id.clone(), node);
+        self.nodes_by_id.insert(node.id, node);
     }
 
     pub fn prune(&mut self) {

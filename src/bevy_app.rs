@@ -123,8 +123,7 @@ fn setup(
             &mut materials,
             text.as_str(),
             searchable_tokens,
-            // TODO: Use a Copy type.
-            node.id.clone(),
+            node.id,
             node.state,
             size,
             translation,

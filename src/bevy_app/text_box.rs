@@ -8,7 +8,7 @@ use crate::{chart, github::GithubIssueState};
 
 use super::ui::UiState;
 
-#[derive(Default, Component)]
+#[derive(Component)]
 pub(crate) struct TextBox {
     pub node_id: chart::NodeId,
     state: GithubIssueState,
@@ -216,7 +216,7 @@ pub(crate) fn text_box_select_handler(
 ) {
     for event in events.read() {
         if let Ok(text_box) = query.get(event.entity) {
-            state.select_node(text_box.node_id.clone());
+            state.select_node(text_box.node_id);
         }
     }
 }

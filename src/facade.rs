@@ -64,7 +64,7 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
         Some(updated_after),
     );
 
-    let mut blocks: IndexMap<NodeId, u32> = IndexMap::default();
+    let mut blocks: IndexMap<String, u32> = IndexMap::default();
 
     let mut id = 1_usize;
 
@@ -100,7 +100,7 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
             .collect();
 
         let node = Node {
-            id: id.to_string(),
+            id: NodeId::new(id),
             text: issue.title,
             url: issue.url,
             state: issue.state,
