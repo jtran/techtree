@@ -153,10 +153,12 @@ pub(crate) struct Flowchart {
 
 impl Flowchart {
     pub fn prune(&mut self) {
+        if self.show_all {
+            return;
+        }
         // TODO: Also prune nodes_by_url.
-        self.nodes_by_id.retain(|_, node| {
-            self.show_all || node.passes_filter(&self.filter)
-        });
+        self.nodes_by_id
+            .retain(|_, node| node.passes_filter(&self.filter));
     }
 
     pub fn num_nodes(&self) -> usize {
