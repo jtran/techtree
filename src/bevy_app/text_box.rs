@@ -125,6 +125,32 @@ pub(crate) fn spawn(
         ..Default::default()
     });
 
+    // Create a border mesh.
+    let border_y = size.y / 10.0;
+    let border_mesh =
+        meshes.add(Cuboid::new(size.x + 0.004, border_y, cube_depth));
+
+    let border_material = match state {
+        GithubIssueState::Open => {
+            materials.add(StandardMaterial {
+                // Purple
+                base_color: Color::rgb_u8(49, 114, 54),
+                metallic: 0.1,
+                perceptual_roughness: 0.5,
+                ..Default::default()
+            })
+        }
+        GithubIssueState::Closed => {
+            materials.add(StandardMaterial {
+                // Purple
+                base_color: Color::rgb_u8(112, 72, 212),
+                metallic: 0.1,
+                perceptual_roughness: 0.5,
+                ..Default::default()
+            })
+        }
+    };
+
     commands
         .spawn(TextBox {
             node_id,
@@ -145,6 +171,23 @@ pub(crate) fn spawn(
             ..default()
         })
         .with_children(|parent| {
+            // Border
+            parent.spawn((
+                PbrBundle {
+                    mesh: border_mesh,
+                    material: border_material,
+                    transform: Transform::from_translation(Vec3::new(
+                        // Offset everything by 0.001 to avoid z-fighting.
+                        -0.001_f32,
+                        (size.y - border_y) / 2.0 + 0.001,
+                        0.001_f32,
+                    )),
+                    ..Default::default()
+                },
+                // Pass events through to the parent.
+                Pickable::IGNORE,
+            ));
+            // Text
             parent.spawn((
                 PbrBundle {
                     mesh: meshes.add(mesh),
@@ -152,8 +195,9 @@ pub(crate) fn spawn(
                     transform: Transform::from_translation(Vec3::new(
                         text_mesh.bbox.size().x / -2_f32,
                         // Manual adjustment to center the text vertically.
-                        // Determined experimentally.
-                        -0.25_f32,
+                        // Determined experimentally.  Without the top-border, it
+                        // was -0.25_f32.
+                        -0.37_f32,
                         // Place the text in front of the cube.
                         cube_depth / 2_f32 + 0.1_f32,
                     )),
