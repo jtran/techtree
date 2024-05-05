@@ -28,7 +28,7 @@ pub(crate) struct Node {
     pub labels: Vec<String>,
     pub project_titles: IndexSet<String>,
     pub depends_on_urls: IndexSet<String>,
-    pub blocks_count: u32,
+    pub depended_on_by_ids: IndexSet<NodeId>,
     pub updated_at: OffsetDateTime,
 }
 
@@ -45,7 +45,11 @@ impl Node {
         filter.matches_project(&self.project_titles)
             && (self.is_open()
                 || filter.matches_updated_after(&self.updated_at))
-            && (!self.depends_on_urls.is_empty() || self.blocks_count != 0)
+            && (!self.depends_on_urls.is_empty() || self.blocks_anything())
+    }
+
+    fn blocks_anything(&self) -> bool {
+        !self.depended_on_by_ids.is_empty()
     }
 }
 
@@ -70,16 +74,17 @@ impl Filter {
     }
 }
 
-#[derive(Debug, bevy::prelude::Resource)]
-pub(crate) struct Flowchart {
+#[derive(Debug)]
+pub(crate) struct FlowchartBuilder {
     title: String,
     pub nodes_by_id: IndexMap<NodeId, Node>,
     pub nodes_by_url: IndexMap<String, NodeId>,
+    depended_on_by_ids: IndexMap<String, IndexSet<NodeId>>,
     show_all: bool,
     filter: Filter,
 }
 
-impl Flowchart {
+impl FlowchartBuilder {
     pub fn new(
         title: String,
         show_all: bool,
@@ -95,18 +100,58 @@ impl Flowchart {
             title,
             nodes_by_id: IndexMap::default(),
             nodes_by_url: IndexMap::default(),
+            depended_on_by_ids: IndexMap::default(),
             show_all,
             filter,
         }
     }
 
     pub fn insert(&mut self, node: Node) {
+        // Track all the things that block this item.
+        for depends_on_url in &node.depends_on_urls {
+            let set = self
+                .depended_on_by_ids
+                .entry(depends_on_url.clone())
+                .or_default();
+            set.insert(node.id);
+        }
+
         if !node.url.is_empty() {
             self.nodes_by_url.insert(node.url.clone(), node.id);
         }
         self.nodes_by_id.insert(node.id, node);
     }
 
+    pub fn build(mut self) -> Flowchart {
+        for (url, depended_on_ids) in self.depended_on_by_ids {
+            if let Some(node_id) = self.nodes_by_url.get(&url) {
+                if let Some(node) = self.nodes_by_id.get_mut(node_id) {
+                    assert_eq!(node.url, url);
+                    node.depended_on_by_ids = depended_on_ids;
+                }
+            }
+        }
+
+        Flowchart {
+            title: self.title,
+            nodes_by_id: self.nodes_by_id,
+            nodes_by_url: self.nodes_by_url,
+            show_all: self.show_all,
+            filter: self.filter,
+        }
+    }
+}
+
+#[derive(Debug, bevy::prelude::Resource)]
+pub(crate) struct Flowchart {
+    title: String,
+    pub nodes_by_id: IndexMap<NodeId, Node>,
+    pub nodes_by_url: IndexMap<String, NodeId>,
+    show_all: bool,
+    filter: Filter,
+}
+
+impl Flowchart {
     pub fn prune(&mut self) {
         // TODO: Also prune nodes_by_url.
         self.nodes_by_id.retain(|_, node| {
@@ -122,12 +167,6 @@ impl Flowchart {
         self.nodes_by_url
             .get(url)
             .and_then(|node_id| self.nodes_by_id.get(node_id))
-    }
-
-    pub fn get_node_by_url_mut(&mut self, url: &str) -> Option<&mut Node> {
-        self.nodes_by_url
-            .get(url)
-            .and_then(|node_id| self.nodes_by_id.get_mut(node_id))
     }
 
     pub fn get_node_by_id(&self, node_id: &NodeId) -> Option<&Node> {

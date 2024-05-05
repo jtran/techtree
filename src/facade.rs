@@ -1,9 +1,9 @@
 use std::path::{Path, PathBuf};
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use time::OffsetDateTime;
 
-use crate::chart::{Flowchart, Node, NodeId};
+use crate::chart::{Flowchart, FlowchartBuilder, Node, NodeId};
 use crate::github::GithubIssue;
 use crate::{parse, AppResult};
 
@@ -57,14 +57,12 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
             args.prior_days.unwrap_or(DEFAULT_PRIOR_DAYS),
         ));
 
-    let mut flowchart = Flowchart::new(
+    let mut flowchart = FlowchartBuilder::new(
         args.title.unwrap_or_default(),
         args.all,
         include_project_only,
         Some(updated_after),
     );
-
-    let mut blocks: IndexMap<String, u32> = IndexMap::default();
 
     let mut id = 1_usize;
 
@@ -82,13 +80,6 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
             .map(|relation| relation.target.into_owned());
 
             depends_on_urls.extend(dependencies);
-
-            // Increment the count of all the things that block this item.
-            for depends_on_url in &depends_on_urls {
-                let previous_count =
-                    blocks.entry(depends_on_url.clone()).or_default();
-                *previous_count = previous_count.saturating_add(1);
-            }
         } else {
             eprintln!("Warning: Unexpected issue URL; couldn't parse repository: {:?}", issue.url);
         }
@@ -111,7 +102,7 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
                 .collect(),
             project_titles,
             depends_on_urls,
-            blocks_count: 0,
+            depended_on_by_ids: IndexSet::default(),
             updated_at: issue.updated_at,
         };
         flowchart.insert(node);
@@ -119,13 +110,5 @@ pub(crate) fn build_dependencies(args: DepsArgs) -> AppResult<Flowchart> {
         id = id.checked_add(1).expect("Overflowed number of items");
     }
 
-    // Update nodes to have the count of items they block.
-    for (url, count) in blocks {
-        let Some(blocking_node) = flowchart.get_node_by_url_mut(&url) else {
-            continue;
-        };
-        blocking_node.blocks_count = count;
-    }
-
-    Ok(flowchart)
+    Ok(flowchart.build())
 }
