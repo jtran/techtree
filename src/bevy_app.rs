@@ -10,6 +10,8 @@ use crate::{
     AppResult,
 };
 
+use self::text_box::NodeIdEntityMap;
+
 mod input;
 mod layout;
 mod text_box;
@@ -32,6 +34,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .insert_resource(Msaa::Sample4)
         .insert_resource(ClearColor(Color::rgb(1_f32, 1_f32, 1_f32)))
         .insert_resource(flowchart)
+        .insert_resource(text_box::NodeIdEntityMap::default())
         .insert_resource(selection::SelectionPluginSettings {
             is_enabled: true,
             click_nothing_deselect_all: true,
@@ -57,6 +60,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_systems(Update, layout::animation_system)
         .add_systems(Update, text_box::text_box_select_handler)
         .add_systems(Update, text_box::text_box_deselect_handler)
+        .add_systems(Update, text_box::edge_drawing_system)
         .run();
 
     Ok(())
@@ -71,6 +75,7 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     flowchart: Res<Flowchart>,
+    mut node_id_entity_map: ResMut<NodeIdEntityMap>,
 ) {
     let font_bytes =
         include_bytes!("../assets/fonts/Fira_Code_v6.2/FiraCode-Regular.ttf");
@@ -121,6 +126,7 @@ fn setup(
             &mut mesh_generator,
             &mut meshes,
             &mut materials,
+            &mut node_id_entity_map,
             text.as_str(),
             searchable_tokens,
             node.id,

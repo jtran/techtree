@@ -4,9 +4,27 @@ use meshtext::{Face, MeshGenerator, MeshText, TextSection};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 
-use crate::{chart, github::GithubIssueState};
+use crate::{
+    chart::{self, Flowchart},
+    github::GithubIssueState,
+};
 
 use super::ui::UiState;
+
+#[derive(Debug, Default, Resource)]
+pub(crate) struct NodeIdEntityMap {
+    pub map: bevy::utils::HashMap<chart::NodeId, Entity>,
+}
+
+impl NodeIdEntityMap {
+    pub fn insert(&mut self, node_id: chart::NodeId, entity: Entity) {
+        self.map.insert(node_id, entity);
+    }
+
+    pub fn get(&self, node_id: &chart::NodeId) -> Option<&Entity> {
+        self.map.get(node_id)
+    }
+}
 
 #[derive(Component)]
 pub(crate) struct TextBox {
@@ -68,6 +86,7 @@ pub(crate) fn spawn(
     mesh_generator: &mut MeshGenerator<Face>,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
+    node_id_entity_map: &mut ResMut<NodeIdEntityMap>,
     text: &str,
     searchable_tokens: SmallVec<[String; 10]>,
     node_id: chart::NodeId,
@@ -151,7 +170,7 @@ pub(crate) fn spawn(
         }
     };
 
-    commands
+    let entity = commands
         .spawn(TextBox {
             node_id,
             state,
@@ -206,7 +225,11 @@ pub(crate) fn spawn(
                 // Pass events through to the parent.
                 Pickable::IGNORE,
             ));
-        });
+        })
+        .id();
+
+    // Associate the two IDs.
+    node_id_entity_map.insert(node_id, entity)
 }
 
 pub(crate) fn text_box_select_handler(
@@ -229,6 +252,41 @@ pub(crate) fn text_box_deselect_handler(
     for event in events.read() {
         if let Ok(text_box) = query.get(event.entity) {
             state.deselect_node(&text_box.node_id);
+        }
+    }
+}
+
+pub(crate) fn edge_drawing_system(
+    mut gizmos: Gizmos,
+    query: Query<(&TextBox, &Visibility, Entity)>,
+    transform_query: Query<&GlobalTransform>,
+    flowchart: Res<Flowchart>,
+    node_id_entity_map: Res<NodeIdEntityMap>,
+) {
+    for (text_box, visibility, entity) in query.iter() {
+        let node = flowchart.nodes_by_id.get(&text_box.node_id).unwrap();
+        if matches!(visibility, Visibility::Hidden) {
+            continue;
+        }
+
+        for node_id in node.depended_on_by_ids.iter() {
+            let start = transform_query.get(entity).unwrap().translation();
+            let other_node = flowchart.nodes_by_id.get(node_id).unwrap();
+            let other_entity = *node_id_entity_map.get(&other_node.id).unwrap();
+            let other_visibility = query.get(other_entity).unwrap().1;
+            if matches!(other_visibility, Visibility::Hidden) {
+                continue;
+            }
+            let end = transform_query
+                .get(other_entity)
+                .copied()
+                .unwrap_or_default()
+                .translation();
+            let color = match text_box.state {
+                GithubIssueState::Open => Color::rgb_u8(49, 114, 54),
+                GithubIssueState::Closed => Color::rgb_u8(112, 72, 212),
+            };
+            gizmos.arrow(start, end, color);
         }
     }
 }
