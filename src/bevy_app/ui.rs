@@ -10,11 +10,19 @@ use crate::chart::NodeId;
 use super::text_box::TextBox;
 use super::ORTHOGRAPHIC_PROJECTION;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, States)]
+pub(crate) enum ViewState {
+    #[default]
+    Grid,
+    ForceGraph,
+}
+
 #[derive(Debug, Resource)]
 pub(crate) struct UiState {
     filter_text: String,
     show_closed: bool,
     pub camera_scale: f32,
+    view_state: ViewState,
     selected_node_id: Option<NodeId>,
     input_debounce_timer: Timer,
 }
@@ -31,6 +39,7 @@ impl Default for UiState {
                 // The default fov of a perspective camera projection.
                 std::f32::consts::FRAC_PI_4
             },
+            view_state: ViewState::default(),
             selected_node_id: None,
             input_debounce_timer: Timer::default(),
         }
@@ -64,6 +73,7 @@ pub(crate) fn immediate_system(
     mut filter_events: EventWriter<FilterChangeEvent>,
     mut camera_events: EventWriter<CameraChangeEvent>,
     flowchart: Res<chart::Flowchart>,
+    mut next_state: ResMut<NextState<ViewState>>,
     time: Res<Time>,
 ) {
     // Update the timer.
@@ -113,6 +123,32 @@ pub(crate) fn immediate_system(
                 camera_events.send_default();
             }
             ui.label("Shift + Scroll Vertically");
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("View As");
+            if ui
+                .radio_value(&mut state.view_state, ViewState::Grid, "Grid")
+                .changed()
+            {
+                if state.view_state == ViewState::Grid {
+                    next_state.set(ViewState::Grid);
+                    needs_layout_events.send_default();
+                }
+            }
+            if ui
+                .radio_value(
+                    &mut state.view_state,
+                    ViewState::ForceGraph,
+                    "Force Graph",
+                )
+                .changed()
+            {
+                if state.view_state == ViewState::ForceGraph {
+                    next_state.set(ViewState::ForceGraph);
+                    needs_layout_events.send_default();
+                }
+            }
         });
         ui.separator();
         if let Some(selected_node_id) = state.selected_node_id.as_ref() {

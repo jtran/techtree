@@ -131,7 +131,7 @@ impl FlowchartBuilder {
                 if let Some(depends_on_id) =
                     self.nodes_by_url.get(depends_on_url)
                 {
-                    node.depended_on_by_ids.insert(*depends_on_id);
+                    node.depends_on_ids.insert(*depends_on_id);
                 }
             }
         }

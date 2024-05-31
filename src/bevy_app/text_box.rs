@@ -24,6 +24,10 @@ impl NodeIdEntityMap {
     pub fn get(&self, node_id: &chart::NodeId) -> Option<&Entity> {
         self.map.get(node_id)
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&chart::NodeId, &Entity)> {
+        self.map.iter()
+    }
 }
 
 #[derive(Component)]

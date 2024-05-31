@@ -1,6 +1,11 @@
 use bevy::prelude::*;
 
-use super::{text_box::TextBox, ui::NeedsLayoutEvent};
+use crate::chart::Flowchart;
+
+use super::{
+    text_box::{NodeIdEntityMap, TextBox},
+    ui::NeedsLayoutEvent,
+};
 
 pub(crate) fn relayout_handler(
     mut events: EventReader<NeedsLayoutEvent>,
@@ -77,5 +82,111 @@ pub(crate) fn animation_system(
         transform.translation = transform
             .translation
             .lerp(text_box.target_translation, 1.0 - (-speed * dt).exp());
+    }
+}
+
+pub(crate) fn force_system(
+    global_transform_query: Query<&GlobalTransform>,
+    mut velocity_query: Query<(
+        &mut TextBox,
+        &mut Transform,
+        &Visibility,
+        Entity,
+    )>,
+    visibility_query: Query<&Visibility>,
+    flowchart: Res<Flowchart>,
+    node_id_entity_map: Res<NodeIdEntityMap>,
+    time: Res<Time>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+) {
+    let k = if keyboard_input.pressed(KeyCode::ShiftLeft)
+        || keyboard_input.pressed(KeyCode::ShiftRight)
+    {
+        500_f32
+    } else {
+        1000_f32
+    };
+    let k_edge = 0.00001_f32;
+
+    let dt = time.delta().as_secs_f32();
+
+    for (text_box, mut transform, visibility, entity) in
+        velocity_query.iter_mut()
+    {
+        let node = flowchart.nodes_by_id.get(&text_box.node_id).unwrap();
+        if matches!(visibility, Visibility::Hidden) {
+            continue;
+        }
+
+        let global_transform = global_transform_query
+            .get(entity)
+            .expect("entity should exist");
+
+        let mut force = Vec3::ZERO;
+
+        for (other_node_id, other_entity) in node_id_entity_map.iter() {
+            // Ignore self.
+            if *other_node_id == node.id {
+                continue;
+            }
+            let other_visibility = visibility_query
+                .get(*other_entity)
+                .expect("entity should exist");
+            // Ignore hidden nodes.
+            if matches!(other_visibility, Visibility::Hidden) {
+                continue;
+            }
+
+            let other_transform = global_transform_query
+                .get(*other_entity)
+                .expect("entity should exist");
+            // Repel.  The force is towards the current node.
+            let direction =
+                global_transform.translation() - other_transform.translation();
+            let distance = direction.length();
+            let force_magnitude = 1.0 / distance.powi(2);
+            force += direction.normalize() * force_magnitude;
+        }
+
+        let force_from_nodes = force;
+
+        // Edges.
+        for other_node_id in node.depends_on_ids.iter() {
+            let other_entity = *node_id_entity_map.get(other_node_id).unwrap();
+            let other_visibility = visibility_query
+                .get(other_entity)
+                .expect("entity should exist");
+            // Ignore hidden nodes.
+            if matches!(other_visibility, Visibility::Hidden) {
+                continue;
+            }
+
+            let other_transform = global_transform_query
+                .get(other_entity)
+                .expect("entity should exist");
+            // The direction is towards the current node.
+            let direction =
+                global_transform.translation() - other_transform.translation();
+            let distance = direction.length();
+            let uncompressed_length = 20_f32;
+            let dx = distance - uncompressed_length;
+            let force_magnitude = (-k_edge * dx).min(0.0);
+            if force_magnitude.is_nan() {
+                // eprintln!("distance is NaN: direction={direction:?} other_transform.translation()={:?}", other_transform.translation());
+            } else {
+                force += direction.normalize() * force_magnitude;
+                eprintln!(
+                    "computing edge force: direction.normalize()={:?}, distance={distance}, dx={dx}, force_magnitude={force_magnitude}",
+                    direction.normalize(),
+                );
+            }
+        }
+
+        let force_from_edges = force - force_from_nodes;
+        if force_from_edges.length().abs() > 0.1 {
+            eprintln!("force_from_edges: {}", force_from_edges.length());
+        }
+
+        transform.translation += k * force * dt;
     }
 }

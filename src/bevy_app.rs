@@ -49,6 +49,7 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_plugins(DefaultPlugins)
         .add_plugins(DefaultPickingPlugins)
         .init_resource::<ui::UiState>()
+        .insert_state(ui::ViewState::default())
         .add_plugins(bevy_egui::EguiPlugin)
         .add_systems(Startup, setup)
         .add_systems(Update, ui::immediate_system)
@@ -56,8 +57,15 @@ pub(crate) fn main(args: crate::GuiArgs) -> AppResult<()> {
         .add_systems(Update, ui::camera_events)
         .add_systems(Update, input::keyboard_system)
         .add_systems(Update, input::events_system)
-        .add_systems(Update, layout::relayout_handler)
-        .add_systems(Update, layout::animation_system)
+        .add_systems(
+            Update,
+            (layout::relayout_handler, layout::animation_system)
+                .run_if(in_state(ui::ViewState::Grid)),
+        )
+        .add_systems(
+            Update,
+            layout::force_system.run_if(in_state(ui::ViewState::ForceGraph)),
+        )
         .add_systems(Update, text_box::text_box_select_handler)
         .add_systems(Update, text_box::text_box_deselect_handler)
         .add_systems(Update, text_box::edge_drawing_system)
